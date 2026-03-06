@@ -7,7 +7,7 @@ function createTownEmbed(townId, pass, hours, expiresAt, expired = false) {
     if (expired) {
         return new EmbedBuilder()
             .setColor(0xFF0000)
-            .setTitle(`🏘️ ${townId} - Expired`)
+            .setTitle(`🏘️ Town ID:  ${townId} - Expired`)
             .setDescription('This town is no longer available.')
             .setTimestamp();
     }
@@ -16,7 +16,7 @@ function createTownEmbed(townId, pass, hours, expiresAt, expired = false) {
 
     return new EmbedBuilder()
         .setColor(0x00FF00)
-        .setTitle(`🏘️ ${townId}`)
+        .setTitle(`🏘️ Town ID:  ${townId}`)
         .addFields(
             { name: 'Pass', value: pass, inline: true },
             { name: 'Available for', value: `${timeLeft} hour(s)`, inline: true }
