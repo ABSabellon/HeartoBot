@@ -5,13 +5,24 @@ const { TOKEN, CLIENT_ID, GUILD_ID } = require('../config');
 
 function loadCommands(client) {
     const commandsPath = path.join(__dirname, '../commands');
-    const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
-
-    for (const file of commandFiles) {
-        const command = require(path.join(commandsPath, file));
-        client.commands.set(command.data.name, command);
-        console.log(`Loaded command: ${command.data.name}`);
+    
+    function loadFromDir(dir) {
+        const entries = fs.readdirSync(dir, { withFileTypes: true });
+        
+        for (const entry of entries) {
+            const fullPath = path.join(dir, entry.name);
+            
+            if (entry.isDirectory()) {
+                loadFromDir(fullPath);
+            } else if (entry.name.endsWith('.js')) {
+                const command = require(fullPath);
+                client.commands.set(command.data.name, command);
+                console.log(`Loaded command: ${command.data.name}`);
+            }
+        }
     }
+    
+    loadFromDir(commandsPath);
 }
 
 async function registerCommands(client) {

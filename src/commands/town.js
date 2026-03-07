@@ -42,7 +42,7 @@ module.exports = {
                 .setDescription('Hours available')
                 .setRequired(true)
                 .setMinValue(1)
-                .setMaxValue(168)),
+                .setMaxValue(24)),
 
     channelRestriction: TOWN_CHANNEL_ID,
 
