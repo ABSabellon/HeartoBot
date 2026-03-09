@@ -43,6 +43,7 @@ module.exports = {
 
     async execute(interaction) {
         const commandsConfig = loadCommandsConfig();
+        const channelsConfig = loadChannels();
         const commandName = interaction.options.getString('command');
 
         if (commandName) {
@@ -63,11 +64,12 @@ module.exports = {
                 });
             }
 
+            const channels = channelsConfig[commandName.toLowerCase()] || [];
             const embed = new EmbedBuilder()
                 .setColor(0x5865F2)
                 .setTitle(`📖 /${commandName}`)
                 .setDescription(cmd.description)
-                .addFields({ name: 'Available in', value: getChannelMentions(cmd.channels) });
+                .addFields({ name: 'Available in', value: getChannelMentions(channels) });
 
             if (cmd.usage) {
                 embed.addFields({ name: 'Usage', value: `\`${cmd.usage}\`` });
