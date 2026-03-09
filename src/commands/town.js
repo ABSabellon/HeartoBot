@@ -1,5 +1,17 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const { TOWN_CHANNEL_ID } = require('../config');
+const fs = require('fs');
+const path = require('path');
+
+const CHANNELS_PATH = path.join(__dirname, '../data/channels.json');
+
+function getCommandChannels(commandName) {
+    try {
+        const channels = JSON.parse(fs.readFileSync(CHANNELS_PATH, 'utf8'));
+        return channels[commandName] || [];
+    } catch {
+        return [];
+    }
+}
 
 const activeTowns = new Map();
 
@@ -44,12 +56,14 @@ module.exports = {
                 .setMinValue(1)
                 .setMaxValue(24)),
 
-    channelRestriction: TOWN_CHANNEL_ID,
+    channelRestriction: 'town',
 
     async execute(interaction, client) {
-        if (interaction.channelId !== TOWN_CHANNEL_ID) {
+        const allowedChannels = getCommandChannels('town');
+        if (allowedChannels.length > 0 && !allowedChannels.includes(interaction.channelId)) {
+            const channelMentions = allowedChannels.map(id => `<#${id}>`).join(', ');
             return interaction.reply({
-                content: `This command can only be used in <#${TOWN_CHANNEL_ID}>`,
+                content: `This command can only be used in: ${channelMentions}`,
                 ephemeral: true
             });
         }

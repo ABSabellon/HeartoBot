@@ -1,0 +1,48 @@
+{
+    "help": {
+        "description": "View available commands and their usage",
+        "permissions": "everyone",
+        "enabled": true,
+        "subcommands": null
+    },
+    "town": {
+        "description": "Post a town with ID, password, and availability",
+        "permissions": "everyone",
+        "enabled": true,
+        "usage": "/town <id> <pass> <hours>",
+        "subcommands": null
+    },
+    "location": {
+        "description": "Add or view resource locations for today",
+        "permissions": "everyone",
+        "enabled": true,
+        "subcommands": {
+            "add": "Add a new resource location",
+            "list": "View all locations added today",
+            "update": "Update a resource location you added"
+        }
+    },
+    "config": {
+        "description": "Bot configuration (Admin only)",
+        "permissions": "ManageGuild",
+        "enabled": true,
+        "subcommands": {
+            "resource": {
+                "description": "Manage resource types",
+                "subcommands": {
+                    "list": "List all resource types",
+                    "add": "Add a new resource type",
+                    "remove": "Remove a resource type"
+                }
+            },
+            "channel": {
+                "description": "Manage command channel restrictions",
+                "subcommands": {
+                    "list": "List allowed channels for a command",
+                    "add": "Add a channel where a command can be used",
+                    "remove": "Remove a channel from a command"
+                }
+            }
+        }
+    }
+}

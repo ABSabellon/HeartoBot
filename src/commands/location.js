@@ -1,17 +1,26 @@
 const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
-const { NPC_LOOKUP_CHANNEL_ID } = require('../config');
+
+const RESOURCE_PATH = path.join(__dirname, '../data/resourceTypes.json');
+const CHANNELS_PATH = path.join(__dirname, '../data/channels.json');
 
 // Store locations for the current day - resets daily
 let dailyLocations = [];
 let lastResetDate = new Date().toDateString();
 
-const DATA_PATH = path.join(__dirname, '../data/resourceTypes.json');
-
 function loadResourceTypes() {
     try {
-        return JSON.parse(fs.readFileSync(DATA_PATH, 'utf8'));
+        return JSON.parse(fs.readFileSync(RESOURCE_PATH, 'utf8'));
+    } catch {
+        return [];
+    }
+}
+
+function getCommandChannels(commandName) {
+    try {
+        const channels = JSON.parse(fs.readFileSync(CHANNELS_PATH, 'utf8'));
+        return channels[commandName] || [];
     } catch {
         return [];
     }
@@ -99,12 +108,14 @@ module.exports = {
                         .setDescription('New location')
                         .setRequired(true))),
 
-    channelRestriction: NPC_LOOKUP_CHANNEL_ID,
+    channelRestriction: 'location',
 
     async execute(interaction) {
-        if (interaction.channelId !== NPC_LOOKUP_CHANNEL_ID) {
+        const allowedChannels = getCommandChannels('location');
+        if (allowedChannels.length > 0 && !allowedChannels.includes(interaction.channelId)) {
+            const channelMentions = allowedChannels.map(id => `<#${id}>`).join(', ');
             return interaction.reply({
-                content: `This command can only be used in <#${NPC_LOOKUP_CHANNEL_ID}>`,
+                content: `This command can only be used in: ${channelMentions}`,
                 ephemeral: true
             });
         }
