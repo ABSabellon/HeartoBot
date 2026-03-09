@@ -36,7 +36,7 @@
                 }
             },
             "channel": {
-                "description": "Manage command channel restrictions",
+                "description": "Manage where commands can be used",
                 "subcommands": {
                     "list": "List allowed channels for a command",
                     "add": "Add a channel where a command can be used",

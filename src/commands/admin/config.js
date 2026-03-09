@@ -4,6 +4,7 @@ const path = require('path');
 
 const RESOURCE_PATH = path.join(__dirname, '../../data/resourceTypes.json');
 const CHANNELS_PATH = path.join(__dirname, '../../data/channels.json');
+const COMMANDS_PATH = path.join(__dirname, '../../data/commands.json');
 
 function loadResourceTypes() {
     try {
@@ -28,6 +29,19 @@ function loadChannels() {
 function saveChannels(channels) {
     fs.writeFileSync(CHANNELS_PATH, JSON.stringify(channels, null, 4));
 }
+
+function getCommandChoices() {
+    try {
+        const commands = JSON.parse(fs.readFileSync(COMMANDS_PATH, 'utf8'));
+        return Object.keys(commands)
+            .filter(name => name !== 'config')
+            .map(name => ({ name, value: name }));
+    } catch {
+        return [];
+    }
+}
+
+const COMMAND_CHOICES = getCommandChoices();
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -60,21 +74,23 @@ module.exports = {
                                 .setRequired(true))))
         .addSubcommandGroup(group =>
             group.setName('channel')
-                .setDescription('Manage command channel restrictions')
+                .setDescription('Manage where commands can be used')
                 .addSubcommand(sub =>
                     sub.setName('list')
-                        .setDescription('List channel restrictions for a command')
+                        .setDescription('List allowed channels for a command')
                         .addStringOption(opt =>
                             opt.setName('command')
-                                .setDescription('Command name (e.g., "town", "location")')
-                                .setRequired(true)))
+                                .setDescription('Command name')
+                                .setRequired(true)
+                                .addChoices(...COMMAND_CHOICES)))
                 .addSubcommand(sub =>
                     sub.setName('add')
                         .setDescription('Add a channel where a command can be used')
                         .addStringOption(opt =>
                             opt.setName('command')
                                 .setDescription('Command name')
-                                .setRequired(true))
+                                .setRequired(true)
+                                .addChoices(...COMMAND_CHOICES))
                         .addChannelOption(opt =>
                             opt.setName('channel')
                                 .setDescription('Channel to allow')
@@ -86,7 +102,8 @@ module.exports = {
                         .addStringOption(opt =>
                             opt.setName('command')
                                 .setDescription('Command name')
-                                .setRequired(true))
+                                .setRequired(true)
+                                .addChoices(...COMMAND_CHOICES))
                         .addChannelOption(opt =>
                             opt.setName('channel')
                                 .setDescription('Channel to remove')

@@ -1,13 +1,43 @@
-const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
 
 const RESOURCE_PATH = path.join(__dirname, '../data/resourceTypes.json');
 const CHANNELS_PATH = path.join(__dirname, '../data/channels.json');
 
-// Store locations for the current day - resets daily
+// Store locations - resets daily at 7 AM PHT (UTC+8)
 let dailyLocations = [];
-let lastResetDate = new Date().toDateString();
+let lastResetTime = getNext7AMPHT();
+
+function getNext7AMPHT() {
+    const now = new Date();
+    
+    // Get current time in PHT (UTC+8)
+    const phtOffset = 8 * 60; // PHT is UTC+8
+    const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+    const phtNow = new Date(utc + (phtOffset * 60000));
+    
+    // Create 7 AM PHT for today
+    const today7AMPHT = new Date(phtNow);
+    today7AMPHT.setHours(7, 0, 0, 0);
+    
+    // If it's before 7 AM PHT, the current period started yesterday at 7 AM
+    if (phtNow.getHours() < 7) {
+        today7AMPHT.setDate(today7AMPHT.getDate() - 1);
+    }
+    
+    // Convert back to UTC timestamp
+    return today7AMPHT.getTime() - (phtOffset * 60000) + (now.getTimezoneOffset() * 60000);
+}
+
+function checkAndResetDaily() {
+    const currentPeriodStart = getNext7AMPHT();
+    
+    if (currentPeriodStart > lastResetTime) {
+        dailyLocations = [];
+        lastResetTime = currentPeriodStart;
+    }
+}
 
 function loadResourceTypes() {
     try {
@@ -28,14 +58,6 @@ function getCommandChannels(commandName) {
 
 const RESOURCE_TYPES = loadResourceTypes();
 
-function checkAndResetDaily() {
-    const today = new Date().toDateString();
-    if (today !== lastResetDate) {
-        dailyLocations = [];
-        lastResetDate = today;
-    }
-}
-
 function createLocationListEmbed() {
     checkAndResetDaily();
 
@@ -44,7 +66,7 @@ function createLocationListEmbed() {
             .setColor(0xFFAA00)
             .setTitle('📍 Today\'s Locations')
             .setDescription('No locations have been added today yet.')
-            .setFooter({ text: `Date: ${lastResetDate}` })
+            .setFooter({ text: `Resets daily at 7:00 AM PHT` })
             .setTimestamp();
     }
 
@@ -59,7 +81,7 @@ function createLocationListEmbed() {
     const embed = new EmbedBuilder()
         .setColor(0x00FF00)
         .setTitle('📍 Today\'s Locations')
-        .setFooter({ text: `Date: ${lastResetDate} | Total: ${dailyLocations.length} location(s)` })
+        .setFooter({ text: `Total: ${dailyLocations.length} location(s) | Resets at 7:00 AM PHT` })
         .setTimestamp();
 
     for (const [type, locations] of Object.entries(locationsByType)) {
