@@ -107,7 +107,8 @@ module.exports = {
             if (!cmd.enabled) continue;
             if (!userHasPermission(interaction.member, cmd.permissions)) continue;
             
-            const channelInfo = getChannelMentions(cmd.channels);
+            const channels = channelsConfig[name] || [];
+            const channelInfo = getChannelMentions(channels);
             availableCommands.push(`\`/${name}\` - ${cmd.description}\n↳ *${channelInfo}*`);
         }
 
