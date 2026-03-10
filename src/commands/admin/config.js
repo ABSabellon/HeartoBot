@@ -5,6 +5,7 @@ const path = require('path');
 const RESOURCE_PATH = path.join(__dirname, '../../data/resourceTypes.json');
 const CHANNELS_PATH = path.join(__dirname, '../../data/channels.json');
 const COMMANDS_PATH = path.join(__dirname, '../../data/commands.json');
+const { loadSettings, saveSettings } = require('../../utils/settings');
 
 function loadResourceTypes() {
     try {

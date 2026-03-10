@@ -22,6 +22,15 @@
             "update": "Update a resource location you added"
         }
     },
+    "birthday": {
+        "description": "Set or view birthdays",
+        "permissions": "everyone",
+        "enabled": true,
+        "subcommands": {
+            "set": "Set your birthday",
+            "list": "View all registered birthdays"
+        }
+    },
     "config": {
         "description": "Bot configuration (Admin only)",
         "permissions": "ManageGuild",

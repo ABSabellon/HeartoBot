@@ -1,0 +1,9 @@
+{
+    "timezone": {
+        "name": "Asia/Manila",
+        "label": "Philippine Time (PHT)",
+        "utcOffset": 8
+    },
+    "locationResetHour": 7,
+    "birthdayGreetHour": 9
+}

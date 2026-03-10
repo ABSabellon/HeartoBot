@@ -4,39 +4,56 @@ const path = require('path');
 
 const RESOURCE_PATH = path.join(__dirname, '../data/resourceTypes.json');
 const CHANNELS_PATH = path.join(__dirname, '../data/channels.json');
+const LOCATIONS_PATH = path.join(__dirname, '../data/locations.json');
+const { loadSettings, getNow } = require('../utils/settings');
 
-// Store locations - resets daily at 7 AM PHT (UTC+8)
+// Store locations - resets daily based on configured timezone
 let dailyLocations = [];
-let lastResetTime = getNext7AMPHT();
 
-function getNext7AMPHT() {
-    const now = new Date();
-    
-    // Get current time in PHT (UTC+8)
-    const phtOffset = 8 * 60; // PHT is UTC+8
-    const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
-    const phtNow = new Date(utc + (phtOffset * 60000));
-    
-    // Create 7 AM PHT for today
-    const today7AMPHT = new Date(phtNow);
-    today7AMPHT.setHours(7, 0, 0, 0);
-    
-    // If it's before 7 AM PHT, the current period started yesterday at 7 AM
-    if (phtNow.getHours() < 7) {
-        today7AMPHT.setDate(today7AMPHT.getDate() - 1);
+// Get today's period date string (YYYY-MM-DD) based on configured reset hour
+function getPeriodDate() {
+    const settings = loadSettings();
+    const now = getNow();
+
+    if (now.getHours() < settings.locationResetHour) {
+        now.setDate(now.getDate() - 1);
     }
-    
-    // Convert back to UTC timestamp
-    return today7AMPHT.getTime() - (phtOffset * 60000) + (now.getTimezoneOffset() * 60000);
+
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+}
+
+function loadLocationData() {
+    try {
+        return JSON.parse(fs.readFileSync(LOCATIONS_PATH, 'utf8'));
+    } catch {
+        return { periodDate: null, locations: [] };
+    }
+}
+
+function saveLocationData() {
+    const data = { periodDate: getPeriodDate(), locations: dailyLocations };
+    fs.writeFileSync(LOCATIONS_PATH, JSON.stringify(data, null, 4), 'utf8');
 }
 
 function checkAndResetDaily() {
-    const currentPeriodStart = getNext7AMPHT();
-    
-    if (currentPeriodStart > lastResetTime) {
+    const today = getPeriodDate();
+    const saved = loadLocationData();
+
+    if (saved.periodDate === today) {
+        // Same day — load from file if memory is empty (e.g. after restart)
+        if (dailyLocations.length === 0 && saved.locations.length > 0) {
+            dailyLocations = saved.locations;
+        }
+    } else {
+        // New day — clear everything
         dailyLocations = [];
-        lastResetTime = currentPeriodStart;
+        saveLocationData();
     }
+}
+
+// Called from index.js on a scheduled interval to proactively reset
+function resetIfNewDay() {
+    checkAndResetDaily();
 }
 
 function loadResourceTypes() {
@@ -58,15 +75,22 @@ function getCommandChannels(commandName) {
 
 const RESOURCE_TYPES = loadResourceTypes();
 
+// Initialize: load locations and clear if stale
+checkAndResetDaily();
+
 function createLocationListEmbed() {
     checkAndResetDaily();
+    const settings = loadSettings();
+    const tzLabel = settings.timezone.label;
+    const resetHour = settings.locationResetHour;
+    const resetTime = `${resetHour}:00 AM ${tzLabel}`;
 
     if (dailyLocations.length === 0) {
         return new EmbedBuilder()
             .setColor(0xFFAA00)
             .setTitle('📍 Today\'s Locations')
             .setDescription('No locations have been added today yet.')
-            .setFooter({ text: `Resets daily at 7:00 AM PHT` })
+            .setFooter({ text: `Resets daily at ${resetTime}` })
             .setTimestamp();
     }
 
@@ -81,7 +105,7 @@ function createLocationListEmbed() {
     const embed = new EmbedBuilder()
         .setColor(0x00FF00)
         .setTitle('📍 Today\'s Locations')
-        .setFooter({ text: `Total: ${dailyLocations.length} location(s) | Resets at 7:00 AM PHT` })
+        .setFooter({ text: `Total: ${dailyLocations.length} location(s) | Resets at ${resetTime}` })
         .setTimestamp();
 
     for (const [type, locations] of Object.entries(locationsByType)) {
@@ -131,6 +155,7 @@ module.exports = {
                         .setRequired(true))),
 
     channelRestriction: 'location',
+    resetIfNewDay,
 
     async execute(interaction) {
         const allowedChannels = getCommandChannels('location');
@@ -165,8 +190,11 @@ module.exports = {
                 type,
                 location,
                 addedBy,
-                addedAt: new Date()
+                addedById: interaction.user.id,
+                addedAt: new Date().toISOString()
             });
+
+            saveLocationData();
 
             const typeName = RESOURCE_TYPES.find(r => r.value === type)?.name || type;
 
@@ -184,6 +212,50 @@ module.exports = {
         if (subcommand === 'list') {
             const embed = createLocationListEmbed();
             return interaction.reply({ embeds: [embed] });
+        }
+
+        if (subcommand === 'update') {
+            const type = interaction.options.getString('type');
+            const location = interaction.options.getString('location');
+
+            const existingIndex = dailyLocations.findIndex(loc => loc.type === type);
+            const typeName = RESOURCE_TYPES.find(r => r.value === type)?.name || type;
+
+            if (existingIndex === -1) {
+                return interaction.reply({
+                    content: `❌ No **${typeName}** location has been added today yet.`,
+                    ephemeral: true
+                });
+            }
+
+            const existing = dailyLocations[existingIndex];
+
+            // Only the original author, or mods/admins can update
+            const isMod = interaction.member.permissions.has('ManageMessages');
+            if (existing.addedById !== interaction.user.id && !isMod) {
+                return interaction.reply({
+                    content: `❌ Only **${existing.addedBy}** or a moderator can update this location.`,
+                    ephemeral: true
+                });
+            }
+
+            dailyLocations[existingIndex] = {
+                ...existing,
+                location,
+                addedBy: interaction.user.username,
+                addedById: interaction.user.id,
+                addedAt: new Date().toISOString()
+            };
+
+            saveLocationData();
+
+            const reply = await interaction.reply({
+                content: `✅ Updated **${typeName}** location to: ${location}`,
+                ephemeral: false,
+                fetchReply: true
+            });
+
+            setTimeout(() => reply.delete().catch(() => {}), 10000);
         }
     }
 };
